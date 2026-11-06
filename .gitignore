@@ -1,0 +1,10 @@
+# Never commit secrets or local env files
+.env
+.env.*
+*.key
+secrets*
+# OS / editor junk
+.DS_Store
+Thumbs.db
+node_modules/
+*.log
