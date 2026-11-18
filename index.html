@@ -844,7 +844,7 @@ th.sortable.is-sorted .sort-caret { color: var(--accent); }
   </form>
 </dialog>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="./supabase.js"></script>
 <script>
 (function () {
   'use strict';
@@ -887,7 +887,7 @@ th.sortable.is-sorted .sort-caret { color: var(--accent); }
   const DEFAULT_TEAM = [
     { member_name: 'Ryan', role: 'Recon Lead' },
     { member_name: 'Olma', role: 'Network Assessment Lead' },
-    { member_name: 'Nathan', role: 'Vulnerability Lead' },
+    { member_name: 'Elnathan', role: 'Vulnerability Lead' },
     { member_name: 'Darien', role: 'AI/Reporting Lead' }
   ];
   // Tables that live on the Engagement page instead of having a page of their own.
@@ -1891,7 +1891,7 @@ th.sortable.is-sorted .sort-caret { color: var(--accent); }
       dataTable(tableDef, shown, p.cols));
   }
 
-  // Read-only view of saved AI output for one module, next to the student's check of it.
+  // Saved AI output for one module, next to the student's check of it (reviewable in place).
   function validationClass(v) {
     return v === 'Confirmed' ? 't-ok' : v === 'Rejected' ? 't-crit' : v === 'Unreviewed' ? 't-open' : 't-med';
   }
@@ -1913,10 +1913,47 @@ th.sortable.is-sorted .sort-caret { color: var(--accent); }
       h('div', { class: 'ai-cols' },
         h('div', null, h('h3', null, 'Saved AI output'), h('p', { class: 'card-text' }, r.ai_output || notRecorded())),
         h('div', null, h('h3', null, 'Student verification note'),
-          r.verification_note
-            ? h('p', { class: 'card-text' }, r.verification_note)
-            : h('p', { class: 'nil' }, 'No verification note yet. Treat this output as unverified.'),
-          r.validated_by ? h('p', { class: 'meta' }, 'Verified by ' + r.validated_by) : null)));
+          state.aiReview === r.id ? aiReviewForm(r) : [
+            r.verification_note
+              ? h('p', { class: 'card-text' }, r.verification_note)
+              : h('p', { class: 'nil' }, 'No verification note yet. Treat this output as unverified.'),
+            r.validated_by ? h('p', { class: 'meta' }, 'Verified by ' + r.validated_by) : null,
+            h('div', { class: 'btn-row' },
+              h('button', { class: 'btn small' + (r.analyst_validation === 'Unreviewed' ? ' primary' : ''), type: 'button',
+                onclick: function () { if (!canEdit()) return; state.aiReview = r.id; paintMain(); } },
+                r.analyst_validation === 'Unreviewed' ? 'Review this output' : 'Update review'))])));
+  }
+
+  // Lets a teammate verify an analysis after it was saved (for example one
+  // drafted outside the app and loaded as Unreviewed). Same fields as the
+  // check done before saving a new answer.
+  function aiReviewForm(r) {
+    const close = function () { state.aiReview = null; paintMain(); };
+    return h('form', {
+      class: 'edit-form is-editing', novalidate: true,
+      onsubmit: onSubmit(function (fd) {
+        const by = formText(fd, 'validated_by'), note = formText(fd, 'verification_note');
+        if (!by || !note) return { error: 'Complete “Verified by” and a verification note before saving.' };
+        return {
+          op: function () {
+            return sb.from('ai_analyses').update({
+              analyst_validation: fd.get('verdict'), verification_note: note, validated_by: by, confidence: fd.get('confidence')
+            }).eq('id', r.id).select();
+          },
+          done: function () { state.aiReview = null; }
+        };
+      })
+    },
+      field('Verified by', textInput('ai-rev-by-' + r.id, 'validated_by', r.validated_by || '', { placeholder: 'Your name' })),
+      field('Your verdict', selectInput('ai-rev-verdict-' + r.id, 'verdict', ['Confirmed', 'Partially confirmed', 'Rejected'],
+        r.analyst_validation && r.analyst_validation !== 'Unreviewed' ? r.analyst_validation : 'Confirmed')),
+      field('Confidence', selectInput('ai-rev-conf-' + r.id, 'confidence', CONFIDENCE, r.confidence || 'Requires more evidence')),
+      field('Verification note', h('textarea', { name: 'verification_note', rows: 3,
+        placeholder: 'What did you check against the evidence? What is right, wrong or unsupported?' }, r.verification_note || '')),
+      h('p', { class: 'form-error', role: 'alert', hidden: true }),
+      h('div', { class: 'form-actions' },
+        h('button', { class: 'btn small', type: 'button', onclick: close }, 'Cancel'),
+        h('button', { class: 'btn small primary', type: 'submit' }, 'Save review')));
   }
 
   function aiSummaryPanel(module, title) {
@@ -1932,7 +1969,7 @@ th.sortable.is-sorted .sort-caret { color: var(--accent); }
           : 'No AI ' + module.toLowerCase() + ' summary saved yet. One appears here when a saved analysis on the AI Security Analyst page is filed under ' + module + '.'
       });
     return h('section', { class: 'panel' },
-      h('header', null, h('h2', null, title), h('span', { class: 'meta' }, 'Read-only · from ', h('code', null, 'ai_analyses'))),
+      h('header', null, h('h2', null, title), h('span', { class: 'meta' }, 'From ', h('code', null, 'ai_analyses'))),
       body);
   }
 
