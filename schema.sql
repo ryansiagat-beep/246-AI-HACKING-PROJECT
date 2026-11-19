@@ -720,6 +720,7 @@ from (values
   ('Ryan',   'Recon Lead',              1),
   ('Olma',   'Network Assessment Lead', 2),
   ('Nathan', 'Vulnerability Lead',      3),
-  ('Darien', 'AI/Reporting Lead',       4)
+  ('Darien', 'AI/Reporting Lead',       4),
+  ('Jacob',  'Demo Lead',               5)
 ) as v (member_name, role, sort_order)
 where not exists (select 1 from public.team_roles);

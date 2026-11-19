@@ -1271,6 +1271,15 @@ th.sortable.is-sorted .sort-caret { color: var(--accent); }
 
 <script src="./supabase.js"></script>
 <script>
+  // supabase.js must sit next to index.html. If it is missing (for example a
+  // lone index.html in Downloads), load the same library (supabase-js v2) from
+  // the public jsDelivr CDN instead, so the app still connects.
+  if (!window.supabase || !window.supabase.createClient) {
+    window.__sbLocalMissing = true;
+    document.write('<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"><\/script>');
+  }
+</script>
+<script>
 (function () {
   'use strict';
 
@@ -1313,7 +1322,8 @@ th.sortable.is-sorted .sort-caret { color: var(--accent); }
     { member_name: 'Ryan', role: 'Recon Lead' },
     { member_name: 'Olma', role: 'Network Assessment Lead' },
     { member_name: 'Elnathan', role: 'Vulnerability Lead' },
-    { member_name: 'Darien', role: 'AI/Reporting Lead' }
+    { member_name: 'Darien', role: 'AI/Reporting Lead' },
+    { member_name: 'Jacob', role: 'Demo Lead' }
   ];
   // Tables that live on the Engagement page instead of having a page of their own.
   const EXTRA_TABLES = [
@@ -1627,7 +1637,9 @@ th.sortable.is-sorted .sort-caret { color: var(--accent); }
   async function connect(url, key, remember) {
     if (!window.supabase || !window.supabase.createClient) {
       state.conn = 'error';
-      state.connMsg = 'The Supabase library didn’t load. Check your internet connection and reload the page.';
+      state.connMsg = window.__sbLocalMissing
+        ? 'The Supabase library didn’t load. supabase.js wasn’t found in the same folder as index.html, and the backup copy from the internet couldn’t be downloaded. Put supabase.js next to index.html (it is in the project repository), or check your internet connection, then reload.'
+        : 'The Supabase library didn’t load. Reload the page; if it keeps happening, replace supabase.js with a fresh copy from the repository.';
       paint();
       return;
     }

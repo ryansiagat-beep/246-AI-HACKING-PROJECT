@@ -10,7 +10,7 @@
 | PRD Field | Response |
 |---|---|
 | **Project Name** | AI Ethical Hacking Command Center |
-| **Team Members / Roles** | Ryan Siagat — Recon Lead · Olma — Network Assessment Lead · Elnathan — Vulnerability Lead · Darien — AI / Reporting Lead |
+| **Team Members / Roles** | Ryan Siagat — Recon Lead · Olma — Network Assessment Lead · Elnathan — Vulnerability Lead · Darien — AI / Reporting Lead · Jacob — Demo Lead |
 | **Problem Statement** | CyberDome Corporation has expanded its network and web services and is concerned that new systems may have unnecessary services, weak configurations, or outdated software. The team needs one place to store, organize, and interpret the evidence from an authorized assessment so an analyst can see what was found, why it matters, what to investigate next, and what to remediate. |
 | **Primary Users** | Ethical hacker / security analyst (daily use), Vulnerability lead (triage), Manager (executive view of risk). |
 | **Project Goal** | A user can log evidence, review discovered assets and vulnerabilities, build an attack-evidence timeline, ask an evidence-grounded AI analyst questions, and produce an executive summary — all tied back to Evidence IDs. |
