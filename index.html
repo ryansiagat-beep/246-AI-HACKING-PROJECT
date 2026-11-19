@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>AI Ethical Hacking Command Center</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;650;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600&display=swap">
 <style>
 /* Layout: a fixed left rail and a status bar frame one scrolling work area.
    Tables are the content; the evidence ID chip is the thread between them. */
@@ -771,16 +771,441 @@ th.sortable.is-sorted .sort-caret { color: var(--accent); }
 .cve-row { display: flex; flex-wrap: wrap; gap: .4rem; align-items: baseline; margin: .25rem 0 0; }
 .cve-sep { width: 0; }
 .panel-body-pre { padding: 0 0 .5rem; }
+
+/* =====================================================================
+   VISUAL REFRESH: glass surfaces, softer slate palette, motion.
+   Appearance only: no layout logic or behavior depends on anything below.
+   Severity, confidence, status and Evidence ID colors are deliberately
+   left at their original values (--crit, --high, --med, --low, --info,
+   --ok, and the Evidence ID chip teal).
+   ===================================================================== */
+:root {
+  --font-display: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+  --ev: #46d3c2;           /* Evidence ID chips keep their original color */
+}
+
+@media screen {
+  :root {
+    --ink-0: rgba(8, 12, 24, .34);     /* wells: inputs, tracks, code */
+    --ink-1: rgba(255, 255, 255, .035);
+    --ink-2: rgba(255, 255, 255, .06);
+    --ink-3: rgba(255, 255, 255, .11);
+    --line: rgba(255, 255, 255, .14);
+    --line-soft: rgba(255, 255, 255, .08);
+    --fg: #eef2fa;
+    --fg-dim: #b4bed1;
+    --fg-faint: #8f9bb2;
+    --accent: #a9abff;                 /* periwinkle, replaces the green-teal */
+    --accent-2: #c39bff;
+    --accent-ink: #15163f;
+    --scrim: rgba(12, 16, 28, .42);
+
+    --glass: rgba(255, 255, 255, .062);
+    --glass-strong: rgba(255, 255, 255, .1);
+    --glass-border: rgba(255, 255, 255, .13);
+    --glass-hi: inset 0 1px 0 rgba(255, 255, 255, .11);
+    --glass-blur: blur(22px) saturate(165%);
+    --shadow-soft: 0 12px 32px -14px rgba(3, 6, 16, .55), 0 2px 6px -2px rgba(3, 6, 16, .25);
+    --shadow-lift: 0 18px 40px -16px rgba(3, 6, 16, .65), 0 4px 10px -4px rgba(3, 6, 16, .3);
+    --r-lg: 18px;
+    --r-md: 12px;
+    --r-sm: 9px;
+    --ease: cubic-bezier(.22, 1, .36, 1);
+    --spring: cubic-bezier(.34, 1.4, .64, 1);
+  }
+
+  html { background: #161d2c; }
+  body {
+    background:
+      radial-gradient(60rem 40rem at 8% -8%, rgba(120, 124, 255, .30), transparent 60%),
+      radial-gradient(48rem 34rem at 96% 4%, rgba(178, 128, 255, .22), transparent 62%),
+      radial-gradient(54rem 40rem at 70% 110%, rgba(72, 146, 255, .20), transparent 60%),
+      radial-gradient(40rem 30rem at -5% 85%, rgba(255, 140, 190, .08), transparent 60%),
+      linear-gradient(160deg, #1c2438 0%, #171e2e 55%, #141a28 100%);
+    background-attachment: fixed;
+    letter-spacing: -.003em;
+  }
+  ::selection { background: rgba(169, 171, 255, .35); }
+  * { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, .2) transparent; }
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .16); border-radius: 999px; border: 3px solid transparent; background-clip: padding-box; }
+  ::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, .28); }
+  ::-webkit-scrollbar-track { background: transparent; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+
+  /* ---------- frame ---------- */
+  .rail, .bar, .app-footer {
+    background: rgba(255, 255, 255, .035);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+  }
+  .rail { border-right: 1px solid var(--glass-border); box-shadow: inset -1px 0 0 rgba(255, 255, 255, .03); padding: 1.125rem .875rem; }
+  .bar { border-bottom: 1px solid var(--glass-border); }
+  .app-footer { border-top: 1px solid var(--glass-border); }
+  .app-footer::before { border-color: var(--accent); box-shadow: 0 0 8px rgba(169, 171, 255, .6); }
+
+  .brand svg { filter: drop-shadow(0 0 10px rgba(169, 171, 255, .45)); }
+  .brand-name { font-weight: 700; letter-spacing: .06em; font-size: .875rem; }
+  .brand-name span {
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text; background-clip: text;
+    color: transparent;
+  }
+
+  .nav-group h2 { font-weight: 600; letter-spacing: .14em; font-size: .625rem; }
+  .nav-link {
+    position: relative;
+    padding: .5rem .75rem;
+    border-radius: 11px;
+    border: 1px solid transparent;
+    transition: background-color .25s var(--ease), color .2s, border-color .25s, transform .35s var(--spring), box-shadow .3s var(--ease);
+  }
+  .nav-link:hover { background: rgba(255, 255, 255, .07); color: var(--fg); transform: translateX(2px); }
+  .nav-link:active { transform: translateX(2px) scale(.98); transition-duration: .08s; }
+  .nav-link[aria-current="page"] {
+    background: linear-gradient(135deg, rgba(143, 147, 255, .26), rgba(184, 140, 255, .12));
+    border-color: rgba(169, 171, 255, .32);
+    box-shadow: var(--glass-hi), 0 6px 18px -10px rgba(130, 120, 255, .8);
+    font-weight: 600;
+  }
+  .nav-link[aria-current="page"]::before {
+    content: "";
+    position: absolute; left: -.5rem; top: 22%; bottom: 22%;
+    width: 3px; border-radius: 3px;
+    background: linear-gradient(var(--accent), var(--accent-2));
+    box-shadow: 0 0 10px rgba(169, 171, 255, .8);
+  }
+  .rail-note {
+    border: 1px solid var(--glass-border);
+    border-radius: var(--r-md);
+    background: var(--glass);
+    box-shadow: var(--glass-hi);
+  }
+
+  .kv-label { font-weight: 600; font-size: .625rem; letter-spacing: .12em; }
+  .kv-value { font-weight: 500; }
+
+  /* ---------- buttons ---------- */
+  .btn {
+    border-radius: 11px;
+    border: 1px solid var(--glass-border);
+    background: rgba(255, 255, 255, .075);
+    -webkit-backdrop-filter: blur(12px) saturate(150%);
+    backdrop-filter: blur(12px) saturate(150%);
+    box-shadow: var(--glass-hi), 0 1px 2px rgba(0, 0, 0, .18);
+    font-weight: 500;
+    padding: .4375rem .875rem;
+    transition: transform .35s var(--spring), background-color .2s var(--ease), border-color .2s, box-shadow .3s var(--ease), color .2s, filter .2s, opacity .2s;
+  }
+  .btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, .13);
+    border-color: rgba(255, 255, 255, .24);
+    transform: translateY(-1.5px);
+    box-shadow: var(--glass-hi), 0 8px 20px -8px rgba(0, 0, 0, .5);
+  }
+  .btn:active:not(:disabled) { transform: translateY(0) scale(.955); transition-duration: .09s; box-shadow: var(--glass-hi), 0 1px 2px rgba(0, 0, 0, .25); }
+  .btn:disabled { opacity: .5; }
+  .btn.small { padding: .25rem .625rem; border-radius: 9px; }
+  .btn.primary,
+  .btn.primary:hover:not(:disabled) {
+    background: linear-gradient(135deg, #9fa2ff 0%, #b98fff 100%);
+    border-color: rgba(255, 255, 255, .28);
+    color: var(--accent-ink);
+    font-weight: 600;
+  }
+  .btn.primary { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .45), 0 6px 18px -8px rgba(150, 130, 255, .75); }
+  .btn.primary:hover:not(:disabled) { filter: brightness(1.06) saturate(1.05); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), 0 12px 28px -10px rgba(150, 130, 255, .9); }
+  .btn.primary:disabled { background: rgba(169, 171, 255, .25); color: var(--fg-dim); box-shadow: none; }
+  .btn.danger:hover:not(:disabled) { background: color-mix(in srgb, var(--crit) 16%, transparent); border-color: var(--crit); }
+  .dot[data-state="on"] { box-shadow: 0 0 8px var(--ok); }
+
+  .linkish, .panel-link, .finding-link { transition: color .2s, filter .2s, opacity .2s; }
+
+  /* ---------- glass surfaces ---------- */
+  .panel, .card, .tile, .table-wrap, .notice, .qnav, .rstat, .figure, .remediation-item, .posture, .scope-badge, .sev-card {
+    border-color: var(--glass-border);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+    box-shadow: var(--glass-hi), var(--shadow-soft);
+  }
+  .panel, .card, .table-wrap, .notice { border-radius: var(--r-lg); background: var(--glass); }
+  .panel .table-wrap { border-radius: 0 0 var(--r-lg) var(--r-lg); background: transparent; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .panel > header, .card > header { border-bottom-color: var(--line-soft); padding-inline: 1.125rem; }
+  .panel h2, .card h2 { font-weight: 650; letter-spacing: .1em; font-size: .75rem; }
+  .panel.is-editing, .card.is-editing { border-color: rgba(169, 171, 255, .55); box-shadow: var(--glass-hi), 0 0 0 3px rgba(169, 171, 255, .14), var(--shadow-soft); }
+  .notice.is-error { border-color: color-mix(in srgb, var(--crit) 70%, transparent); }
+
+  .tile, .qnav, .rstat, .figure, .remediation-item { border-radius: var(--r-md); background: var(--glass); }
+  .tile, .qnav, .sev-card, .figure, .remediation-item {
+    transition: transform .4s var(--spring), background-color .25s var(--ease), border-color .25s, box-shadow .35s var(--ease);
+  }
+  .tile:hover, .qnav:hover, .sev-card:hover { transform: translateY(-3px); box-shadow: var(--glass-hi), var(--shadow-lift); border-color: rgba(255, 255, 255, .22); }
+  .tile:hover, .qnav:hover { background: var(--glass-strong); }
+  .tile:active, .qnav:active, .sev-card:active { transform: translateY(-1px) scale(.98); transition-duration: .1s; }
+  .tile { padding: 1rem 1.125rem; }
+  .tile-label { font-weight: 600; font-size: .6875rem; letter-spacing: .1em; }
+  .tile-num, .sev-num, .rstat-n, .priority-rank, .big-host {
+    font-family: var(--font-body);
+    font-weight: 650;
+    letter-spacing: -.02em;
+    font-variant-numeric: tabular-nums;
+  }
+  .tile-num { font-size: 2rem; }
+  .sev-card { border-radius: var(--r-md); }
+  .priority-rank {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    font-size: 2rem;
+  }
+  .posture { border-radius: var(--r-lg); }
+  .scope-badge { border-radius: var(--r-md); border-color: rgba(169, 171, 255, .35); background: linear-gradient(135deg, rgba(143, 147, 255, .14), rgba(184, 140, 255, .06)); }
+
+  /* ---------- page heading ---------- */
+  .page-head h1 { font-weight: 700; font-size: 1.875rem; letter-spacing: -.025em; }
+  .page-head p { color: var(--fg-dim); }
+
+  /* ---------- tables ---------- */
+  th { background: rgba(255, 255, 255, .035); border-bottom-color: var(--line-soft); font-weight: 600; font-size: .625rem; letter-spacing: .12em; }
+  td { border-bottom-color: rgba(255, 255, 255, .055); }
+  tbody tr td { transition: background-color .22s var(--ease); }
+  tbody tr:hover td { background: rgba(255, 255, 255, .045); }
+  th.sortable { transition: color .2s; }
+  .ev { border-radius: 6px; transition: background-color .2s, transform .25s var(--spring), box-shadow .25s; }
+  .ev, a.ev:hover { color: var(--ev); border-color: color-mix(in srgb, var(--ev) 45%, transparent); }
+  .ev { background: color-mix(in srgb, var(--ev) 9%, transparent); }
+  a.ev:hover { background: color-mix(in srgb, var(--ev) 20%, transparent); transform: translateY(-1px); }
+
+  /* ---------- chips, tabs, flags ---------- */
+  .chip, .flag-btn, .tab {
+    transition: background-color .22s var(--ease), border-color .22s, color .2s, transform .35s var(--spring), box-shadow .3s var(--ease);
+  }
+  .chip { border-color: var(--glass-border); background: rgba(255, 255, 255, .04); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+  .chip:hover { background: rgba(255, 255, 255, .1); transform: translateY(-1px); }
+  .chip:active, .flag-btn:active, .tab:active { transform: scale(.96); transition-duration: .08s; }
+  .chip[aria-pressed="true"] {
+    background: linear-gradient(135deg, rgba(143, 147, 255, .3), rgba(184, 140, 255, .16));
+    border-color: rgba(169, 171, 255, .55);
+    box-shadow: var(--glass-hi), 0 4px 14px -8px rgba(140, 130, 255, .9);
+  }
+  .chip-n { border-radius: 6px; background: rgba(255, 255, 255, .08); }
+  .flag-btn:hover { transform: translateY(-1px); }
+  .tabrow { gap: .375rem; }
+  .tab { border-radius: 11px 11px 0 0; border-color: var(--glass-border); background: rgba(255, 255, 255, .04); }
+  .tab:hover { background: rgba(255, 255, 255, .09); }
+  .tab.is-active { background: linear-gradient(180deg, rgba(169, 171, 255, .2), rgba(255, 255, 255, .06)); box-shadow: inset 0 2px 0 var(--accent); }
+
+  /* ---------- inputs ---------- */
+  .field input, .field select, .field textarea, td input, td select, .search, .filters select, .composer textarea {
+    border-radius: 10px;
+    border-color: var(--glass-border);
+    background: rgba(8, 12, 24, .32);
+    transition: border-color .2s, box-shadow .25s var(--ease), background-color .2s;
+  }
+  .search, .composer textarea { -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+  .field input:hover, .field select:hover, .field textarea:hover, .search:hover, .composer textarea:hover, .filters select:hover { border-color: rgba(255, 255, 255, .22); }
+  .field input:focus, .field select:focus, .field textarea:focus, td input:focus, td select:focus, .search:focus, .filters select:focus, .composer textarea:focus {
+    outline: none;
+    border-color: rgba(169, 171, 255, .7);
+    box-shadow: 0 0 0 3px rgba(169, 171, 255, .2);
+    background: rgba(8, 12, 24, .45);
+  }
+  select option { background: #1f273a; color: var(--fg); }
+  td textarea {
+    width: 100%; min-width: 14rem; padding: .4375rem .5625rem;
+    border: 1px solid var(--glass-border); border-radius: 10px;
+    background: rgba(8, 12, 24, .32); font: inherit; font-size: .8125rem; resize: vertical;
+    transition: border-color .2s, box-shadow .25s var(--ease);
+  }
+  td textarea:focus { outline: none; border-color: rgba(169, 171, 255, .7); box-shadow: 0 0 0 3px rgba(169, 171, 255, .2); }
+  input[type="file"]::file-selector-button {
+    margin-right: .625rem;
+    padding: .3125rem .75rem;
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, .1);
+    color: var(--fg);
+    font: 500 .8125rem/1.3 var(--font-body);
+    cursor: pointer;
+    transition: background-color .2s, transform .3s var(--spring);
+  }
+  input[type="file"]::file-selector-button:hover { background: rgba(255, 255, 255, .18); }
+  input[type="file"]::file-selector-button:active { transform: scale(.95); }
+  .obs { border-radius: 10px; border-color: var(--line-soft); }
+
+  /* ---------- small details ---------- */
+  .dist-track, .bar-track { border-radius: 999px; background: rgba(255, 255, 255, .07); }
+  .dist-fill, .bar-fill { border-radius: 999px; }
+  .tl-rail::before { background: linear-gradient(var(--line), rgba(255, 255, 255, .05)); }
+  .tl-rail::after { background: #222b40; }
+  .ai-entry { border-bottom-color: var(--line-soft); }
+  .doc-class, .rpt-num, .fig-label { color: var(--accent); }
+  .auto-badge { border-radius: 999px; }
+  .src-tag { border-radius: 6px; }
+
+  /* ---------- dialog ---------- */
+  dialog {
+    border: 1px solid var(--glass-border);
+    border-radius: 22px;
+    background: rgba(32, 40, 60, .72);
+    -webkit-backdrop-filter: blur(30px) saturate(170%);
+    backdrop-filter: blur(30px) saturate(170%);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .14), 0 30px 80px -20px rgba(0, 0, 0, .7);
+  }
+  dialog::backdrop { background: var(--scrim); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+  .dlg { padding: 1.5rem; }
+  .dlg h2 { font-weight: 700; letter-spacing: -.01em; }
+}
+
+/* ---------- Executive Dashboard layout (bento grid) ----------
+   Placement only: the same blocks, in the same order, laid out on a grid.
+   Wide screens put Risk posture beside the numbers; narrower screens
+   fall back to a single column. */
+@media screen {
+  .page.dash .tiles { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .page.dash .dash-cols { grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); align-items: stretch; }
+  .page.dash .dash-cols > .panel { display: flex; flex-direction: column; }
+  .page.dash .dash-cols > .panel > .donut-wrap { flex: 1; justify-content: center; padding: 1.5rem 1.25rem; }
+  .page.dash .dash-cols > .stack > .panel:last-child { flex: 1; }
+  .page.dash .tile { justify-content: space-between; min-height: 6.25rem; }
+}
+@media screen and (max-width: 60rem) {
+  .page.dash .dash-cols { grid-template-columns: minmax(0, 1fr); }
+}
+@media screen and (max-width: 30rem) {
+  .page.dash .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media screen and (min-width: 75rem) {
+  .page.dash {
+    display: grid;
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    grid-template-areas:
+      "head head head head head head head head head head head head"
+      "post post post post kpi  kpi  kpi  kpi  kpi  kpi  kpi  kpi"
+      "post post post post sev  sev  sev  sev  sev  sev  sev  sev"
+      "cols cols cols cols cols cols cols cols cols cols cols cols"
+      "nav  nav  nav  nav  nav  nav  nav  nav  nav  nav  nav  nav";
+    gap: 1rem;
+    align-items: stretch;
+  }
+  .page.dash:has(> .notice) {
+    grid-template-areas:
+      "head head head head head head head head head head head head"
+      "note note note note note note note note note note note note"
+      "post post post post kpi  kpi  kpi  kpi  kpi  kpi  kpi  kpi"
+      "post post post post sev  sev  sev  sev  sev  sev  sev  sev"
+      "cols cols cols cols cols cols cols cols cols cols cols cols"
+      "nav  nav  nav  nav  nav  nav  nav  nav  nav  nav  nav  nav";
+  }
+  .page.dash > .page-head { grid-area: head; }
+  .page.dash > .notice { grid-area: note; }
+  .page.dash > .posture { grid-area: post; }
+  .page.dash > .tiles { grid-area: kpi; }
+  .page.dash > .sev-cards { grid-area: sev; }
+  .page.dash > .dash-cols { grid-area: cols; }
+  .page.dash > .panel:last-child { grid-area: nav; }
+
+  /* Risk posture as a tall hero card */
+  .page.dash > .posture {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: .875rem;
+    padding: 1.375rem 1.5rem;
+    background:
+      radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--c, var(--info)) 22%, transparent), transparent 70%),
+      var(--glass);
+  }
+  .page.dash > .posture .posture-head { gap: .375rem; }
+  .page.dash > .posture .posture-level { font-size: 2.5rem; font-weight: 700; letter-spacing: -.03em; line-height: 1; }
+  .page.dash > .posture .posture-note { flex: 1 1 auto; max-width: none; font-size: .9375rem; line-height: 1.55; }
+  .page.dash > .posture .btn { margin-left: 0; margin-top: auto; }
+  .page.dash .tiles, .page.dash .sev-cards { gap: 1rem; }
+  .page.dash .dash-cols { gap: 1rem; }
+  .page.dash .quicknav { grid-template-columns: repeat(8, minmax(0, 1fr)); }
+  .page.dash .qnav { flex-direction: column; align-items: flex-start; gap: .375rem; padding: .75rem .875rem; }
+}
+
+/* ---------- brand: AHC Command Center mark ---------- */
+@media screen {
+  .brand { gap: .75rem; cursor: pointer; user-select: none; -webkit-tap-highlight-color: transparent; }
+  .brand-mark { overflow: visible; transition: transform .45s var(--spring), filter .3s var(--ease); }
+  .brand:hover .brand-mark { transform: scale(1.06); filter: drop-shadow(0 0 14px rgba(169, 171, 255, .7)); }
+  .brand:active .brand-mark { transform: scale(.94); transition-duration: .1s; }
+  .brand-orbit, .brand-ring, .brand-check { transform-box: view-box; transform-origin: 18px 18px; }
+  .brand-name { font-size: 1.375rem; font-weight: 800; letter-spacing: .1em; line-height: 1; }
+  .brand-name span { margin-top: .3125rem; font-size: .625rem; font-weight: 650; letter-spacing: .24em; line-height: 1.2; }
+}
+@media screen and (prefers-reduced-motion: no-preference) {
+  .brand.is-spinning .brand-orbit { animation: ahc-spin .85s cubic-bezier(.34, 1.25, .64, 1); }
+  .brand.is-spinning .brand-ring { animation: ahc-counter .85s cubic-bezier(.22, 1, .36, 1); }
+  .brand.is-spinning .brand-check { animation: ahc-pop .55s cubic-bezier(.34, 1.56, .64, 1) .2s; }
+  @keyframes ahc-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  @keyframes ahc-counter { from { transform: rotate(0deg); } to { transform: rotate(-180deg); } }
+  @keyframes ahc-pop { 0% { transform: scale(1); } 40% { transform: scale(.6); opacity: .4; } 100% { transform: scale(1); opacity: 1; } }
+}
+
+/* ---------- motion ---------- */
+@media screen and (prefers-reduced-motion: no-preference) {
+  /* Plays only when switching sections (main[data-shown] changes), not on every refresh. */
+  .page-enter > * { animation: cc-rise .55s var(--ease) both; }
+  .page-enter > :nth-child(1) { animation-delay: 0ms; }
+  .page-enter > :nth-child(2) { animation-delay: 45ms; }
+  .page-enter > :nth-child(3) { animation-delay: 90ms; }
+  .page-enter > :nth-child(4) { animation-delay: 135ms; }
+  .page-enter > :nth-child(5) { animation-delay: 180ms; }
+  .page-enter > :nth-child(6) { animation-delay: 220ms; }
+  .page-enter > :nth-child(n+7) { animation-delay: 260ms; }
+  @keyframes cc-rise {
+    from { opacity: 0; transform: translateY(12px) scale(.992); filter: blur(4px); }
+    to { opacity: 1; transform: none; filter: none; }
+  }
+
+  dialog[open] { animation: cc-pop .38s var(--spring) both; }
+  dialog[open]::backdrop { animation: cc-fade .3s var(--ease) both; }
+  @keyframes cc-pop { from { opacity: 0; transform: translateY(8px) scale(.95); } to { opacity: 1; transform: none; } }
+  @keyframes cc-fade { from { opacity: 0; } to { opacity: 1; } }
+
+  .is-editing { animation: cc-glow .5s var(--ease) both; }
+  @keyframes cc-glow { from { box-shadow: 0 0 0 0 rgba(169, 171, 255, .45); } }
+
+  .busy-dot { box-shadow: 0 0 10px var(--accent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
 </style>
 
 <div class="app">
   <aside class="rail">
-    <div class="brand">
-      <svg width="30" height="30" viewBox="0 0 30 30" aria-hidden="true">
-        <path d="M15 2.5 25.8 8.75v12.5L15 27.5 4.2 21.25V8.75Z" fill="none" stroke="var(--accent)" stroke-width="1.6"/>
-        <path d="M10 15.5l3.4 3.4L20.4 12" fill="none" stroke="var(--fg)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <div class="brand" title="AHC Command Center">
+      <svg class="brand-mark" width="36" height="36" viewBox="0 0 36 36" aria-hidden="true">
+        <defs>
+          <linearGradient id="ahc-grad" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" style="stop-color: var(--accent)"/>
+            <stop offset="1" style="stop-color: var(--accent-2, var(--accent))"/>
+          </linearGradient>
+          <radialGradient id="ahc-core" cx=".5" cy=".42" r=".6">
+            <stop offset="0" style="stop-color: var(--accent); stop-opacity: .45"/>
+            <stop offset="1" style="stop-color: var(--accent-2, var(--accent)); stop-opacity: .05"/>
+          </radialGradient>
+        </defs>
+        <g class="brand-orbit">
+          <path d="M18 2 31.86 10v16L18 34 4.14 26V10Z" fill="none" stroke="url(#ahc-grad)" stroke-width="1.6" stroke-linejoin="round"/>
+          <g fill="url(#ahc-grad)">
+            <circle cx="18" cy="2" r="1.3"/><circle cx="31.86" cy="10" r="1.3"/><circle cx="31.86" cy="26" r="1.3"/>
+            <circle cx="18" cy="34" r="1.3"/><circle cx="4.14" cy="26" r="1.3"/><circle cx="4.14" cy="10" r="1.3"/>
+          </g>
+          <g stroke="url(#ahc-grad)" stroke-width="1.4" stroke-linecap="round">
+            <path d="M18 5.2v2.4M18 28.4v2.4M7 18h2.4M26.6 18H29"/>
+          </g>
+        </g>
+        <circle class="brand-ring" cx="18" cy="18" r="11.2" fill="none" stroke="var(--fg-dim)" stroke-opacity=".55" stroke-width="1" stroke-dasharray="2.2 2.6"/>
+        <circle cx="18" cy="18" r="8" fill="url(#ahc-core)" stroke="url(#ahc-grad)" stroke-opacity=".7" stroke-width="1"/>
+        <path class="brand-check" d="M14.3 18.3l2.5 2.5 5-5.4" fill="none" stroke="var(--fg)" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
-      <div class="brand-name">AI Ethical Hacking <span>Command Center</span></div>
+      <div class="brand-name">AHC <span>Command Center</span></div>
     </div>
     <nav id="nav" aria-label="Sections"></nav>
     <p class="rail-note"><strong>Records only.</strong> This workspace stores and presents assessment evidence. It does not run scans.</p>
@@ -925,7 +1350,7 @@ th.sortable.is-sorted .sort-caret { color: var(--accent); }
     scan: {
       label: 'Scan & Enumeration', table: 'assets', order: 'created_at', cites: true,
       blurb: 'Hosts, ports and services found in scope. Results are logged here after a scan; nothing is scanned from this app.',
-      emptyText: 'No scan rows yet. Paste scanner output to save it as evidence, then use Add row for each host and port it shows.',
+      emptyText: 'No scan rows yet. Use Import Nmap results to load an Nmap scan you ran (XML or text output), or paste scanner output and add rows by hand.',
       rowClass: function (r) { return r.needs_investigation ? 'is-flagged' : null; },
       cols: [
         { key: 'needs_investigation', label: 'Flag', cls: 'is-tight', render: function (r) { return flagButton(r); } },
@@ -936,7 +1361,8 @@ th.sortable.is-sorted .sort-caret { color: var(--accent); }
         { key: 'state', label: 'State', cls: 'is-tight', render: function (r) { return stateTag(r); } },
         { key: 'service', label: 'Service', cls: 'is-tight' },
         { key: 'version', label: 'Version' },
-        { key: 'risk_note', label: 'Analyst risk note', type: 'long', cls: 'is-snug' },
+        { key: 'os_observation', label: 'OS' },
+        { key: 'risk_note', label: 'Analyst risk note', type: 'long', cls: 'is-snug', render: function (r) { return riskNoteCell(r); } },
         { key: 'evidence_id', label: 'Evidence', type: 'ev', cls: 'is-tight' }
       ]
     },
@@ -1227,7 +1653,7 @@ th.sortable.is-sorted .sort-caret { color: var(--accent); }
     state.conn = 'off'; state.connMsg = ''; state.data = {}; state.errors = {}; state.syncedAt = null;
     state.user = null; state.editing = null; state.confirming = null;
     state.analyst = { busy: false, result: null, error: '', question: '', action: null, module: 'General', manualOpen: false };
-    state.imp = null; state.webOpen = false; state.enrich = { busy: false, msg: '', error: '' }; state.mgmt = null;
+    state.imp = null; state.nmap = null; state.scanNotice = ''; state.webOpen = false; state.enrich = { busy: false, msg: '', error: '' }; state.mgmt = null;
     state.vulnFilter = null; state.vulnStatusFilter = 'All'; state.vulnSort = { key: 'cvss', dir: 'desc' };
     state.sbUrl = ''; state.sbKey = '';
     paint();
@@ -2405,20 +2831,302 @@ th.sortable.is-sorted .sort-caret { color: var(--accent); }
               }
             }, c[0], loaded ? h('span', { class: 'chip-n' }, c[1]) : null);
           })),
-        formOpen ? null : h('div', { class: 'btn-row' },
+        formOpen || state.nmap ? null : h('div', { class: 'btn-row' },
           h('button', { class: 'btn', type: 'button', onclick: function () { startEdit('scan:paste'); } }, 'Paste scanner output'),
-          h('button', { class: 'btn primary', type: 'button', onclick: function () { state.scanDraft = null; startEdit('scan:new'); } }, 'Add row'))),
+          h('button', { class: 'btn', type: 'button', onclick: function () { state.scanDraft = null; startEdit('scan:new'); } }, 'Add row'),
+          h('button', { class: 'btn primary', type: 'button', onclick: openNmapImport }, 'Import Nmap results'))),
       h('p', { class: 'form-error', id: 'scan-error', role: 'alert', hidden: true }),
       dataTable(tableDef, shown, p.cols));
+  }
+
+  // Analyst risk note on an existing scan row, edited in place (imported rows start without one).
+  function riskNoteCell(r) {
+    if (state.editing === 'scan:note:' + r.id) {
+      return h('form', {
+        class: 'edit-form', novalidate: true,
+        onsubmit: onSubmit(function (fd) {
+          const note = formText(fd, 'risk_note');
+          return { op: function () { return sb.from('assets').update({ risk_note: note || null }).eq('id', r.id).select(); } };
+        })
+      },
+        h('textarea', { name: 'risk_note', rows: 3, 'aria-label': 'Analyst risk note', placeholder: 'Why this service matters and what to check next' }, r.risk_note || ''),
+        h('p', { class: 'form-error', role: 'alert', hidden: true }),
+        h('div', { class: 'row-actions' },
+          h('button', { class: 'btn small', type: 'button', onclick: cancelEdit }, 'Cancel'),
+          h('button', { class: 'btn small primary', type: 'submit' }, 'Save')));
+    }
+    return h('div', { class: 'stack', style: 'gap: .375rem' },
+      r.risk_note ? h('span', null, r.risk_note) : null,
+      h('div', null, h('button', { class: 'btn small', type: 'button', onclick: function () { startEdit('scan:note:' + r.id); } }, r.risk_note ? 'Edit note' : 'Add note')));
+  }
+
+  /* ---------- scan: Nmap import ----------
+     Reads Nmap output you already ran (XML from -oX, or the normal text
+     output). Parsing happens in the parse-scan function (target "assets").
+     Nothing is scanned from here. On save: the raw file goes to the
+     evidence-files bucket, one Evidence item is created for the scan, and
+     each accepted host/port becomes a Scan & Enumeration row citing it. */
+  function engagementCidr() {
+    const eng = rowsOf('engagement')[0];
+    const m = /(\d{1,3}(?:\.\d{1,3}){3})\/(\d{1,2})/.exec((eng && eng.scope) || DEFAULT_ENGAGEMENT.scope || '');
+    return m ? { base: m[1], bits: parseInt(m[2], 10), text: m[1] + '/' + m[2] } : null;
+  }
+  function ipToInt(ip) {
+    const p = String(ip || '').split('.');
+    if (p.length !== 4) return null;
+    let n = 0;
+    for (let i = 0; i < 4; i++) { const v = parseInt(p[i], 10); if (isNaN(v) || v < 0 || v > 255) return null; n = n * 256 + v; }
+    return n;
+  }
+  function inScope(ip, cidr) {
+    if (!cidr) return true;              // no CIDR recorded: nothing to compare against
+    const a = ipToInt(ip), b = ipToInt(cidr.base);
+    if (a == null || b == null) return false;
+    const size = Math.pow(2, 32 - cidr.bits);
+    return Math.floor(a / size) === Math.floor(b / size);
+  }
+  // Same host (by IP, else hostname) + port + protocol counts as already recorded.
+  function nmapKey(r) { return [r.ip_address || r.hostname || '', r.port || '', r.port ? (r.protocol || '') : ''].join('|').toLowerCase(); }
+  function existingAssetKeys() {
+    const keys = {};
+    rowsOf('assets').forEach(function (a) {
+      keys[nmapKey(a)] = true;
+      if (a.ip_address && a.hostname) keys[nmapKey({ hostname: a.hostname, port: a.port, protocol: a.protocol })] = true;
+    });
+    return keys;
+  }
+  function repaintNmap() { const el = $('nmap-panel'); if (el) el.replaceWith(nmapPanel()); }
+  function openNmapImport() {
+    if (!canEdit()) return;
+    state.editing = null;
+    state.nmap = { phase: 'pick', text: '', fileName: '', _file: null, busy: false, error: '', records: [], meta: null, parseErrors: [], confidence: 'High', sanitized: false };
+    state.scanNotice = '';
+    paintMain();
+    const p = $('nmap-panel'); if (p) p.scrollIntoView({ block: 'nearest' });
+  }
+
+  async function runNmapParse() {
+    const im = state.nmap;
+    if (!canEdit()) return;
+    im.error = '';
+    const ta = $('nmap-text'); if (ta && !im._file) im.text = ta.value;
+    if (im._file) { try { im.text = await im._file.text(); } catch (e) { im.error = 'Couldn’t read that file. Try saving it again, or paste the output instead.'; repaintNmap(); return; } }
+    const text = (im.text || '').trim();
+    if (!text) { im.error = 'Choose the Nmap output file or paste the output first.'; repaintNmap(); return; }
+    if (text.length > 5000000) { im.error = 'That file is larger than 5 MB. Import one host or subnet at a time.'; repaintNmap(); return; }
+    const secrets = findSecrets(text);
+    if (secrets.length) { im.error = 'This output looks like it contains ' + secrets.join(' and ') + '. Remove it or replace it with [REDACTED], then try again.'; repaintNmap(); return; }
+    im.busy = true; repaintNmap();
+    let data = null, err = null;
+    try {
+      const r = await sb.functions.invoke('parse-scan', { body: { format: 'auto', target: 'assets', filename: im.fileName || '', text: text } });
+      data = r.data; err = r.error;
+    } catch (e) { err = e; }
+    im.busy = false;
+    if (err) { im.error = await parseError(err); repaintNmap(); return; }
+    if (!data || !Array.isArray(data.records)) { im.error = (data && data.error) || 'The parser returned nothing usable.'; repaintNmap(); return; }
+
+    const cidr = engagementCidr();
+    const have = existingAssetKeys();
+    const seen = {};
+    const portIps = {};
+    data.records.forEach(function (r) { if (r.port != null && r.ip_address) portIps[r.ip_address] = true; });
+    im.records = data.records.map(function (r) {
+      const key = nmapKey(r);
+      const dupe = !!have[key] || !!seen[key];
+      seen[key] = true;
+      const scoped = r.ip_address ? inScope(r.ip_address, cidr) : !cidr;
+      const hostOnly = r.port == null;
+      const rec = Object.assign({}, r, { _dupe: dupe, _scoped: scoped, _hostOnly: hostOnly });
+      // Default: keep open ports and bare live hosts that are in scope and new.
+      rec.accepted = scoped && !dupe && (hostOnly ? !portIps[r.ip_address] : r.state === 'open');
+      return rec;
+    });
+    im.meta = data.meta || null;
+    im.parseErrors = (data.errors || []).map(function (er) { return (er.line ? 'Line ' + er.line + ': ' : '') + er.message; });
+    im.phase = 'preview';
+    repaintNmap();
+  }
+
+  function nmapSummary(im, accepted) {
+    const m = im.meta || {};
+    const hosts = {};
+    accepted.forEach(function (r) { hosts[r.ip_address || r.hostname] = true; });
+    const lines = [];
+    lines.push('Nmap ' + (m.nmap_version || '') + ' scan' + (m.command ? ' (' + m.command + ')' : '') + (m.started ? ', started ' + m.started : '') + '.');
+    if (m.summary) lines.push(m.summary.replace(/^Nmap done(?: at [^;]+;)?:?\s*/, 'Result: ') + '.');
+    lines.push('Imported ' + plural(accepted.length, 'row') + ' for ' + plural(Object.keys(hosts).length, 'host') + ':');
+    accepted.slice(0, 40).forEach(function (r) {
+      lines.push('- ' + (r.ip_address || r.hostname) + (r.port ? ' ' + r.port + '/' + r.protocol + ' ' + (r.state || '') + ' ' + (r.service || '') + (r.version ? ' ' + r.version : '') : ' host up, no ports listed'));
+    });
+    if (accepted.length > 40) lines.push('- … and ' + (accepted.length - 40) + ' more (see the raw file).');
+    const os = accepted.map(function (r) { return r.os_observation; }).filter(function (x, i, a) { return x && a.indexOf(x) === i; });
+    if (os.length) lines.push('OS observations: ' + os.join('; ') + '.');
+    return lines.join('\n').replace(/ +\n/g, '\n').replace(/\s+\./g, '.');
+  }
+  function nmapStartedAt(m) {
+    if (!m || !m.started) return null;
+    const d = new Date(m.started.replace(/\s+[A-Z]{2,4}$/, ''));
+    return isNaN(d.getTime()) ? null : d.toISOString();
+  }
+
+  async function commitNmap() {
+    const im = state.nmap;
+    if (!canEdit()) return;
+    const sanitized = $('nmap-sanitized'); im.sanitized = !!(sanitized && sanitized.checked);
+    const conf = $('nmap-confidence'); if (conf) im.confidence = conf.value;
+    const accepted = im.records.filter(function (r) { return r.accepted; });
+    if (!accepted.length) { im.error = 'Tick at least one row to import.'; repaintNmap(); return; }
+    if (accepted.some(function (r) { return !r._scoped; })) { im.error = 'One or more ticked rows are outside the engagement scope. Untick them first.'; repaintNmap(); return; }
+    if (!im.sanitized) { im.error = 'Tick the box to confirm the output is sanitized and in scope.'; repaintNmap(); return; }
+    im.committing = true; im.error = ''; repaintNmap();
+
+    // 1) Keep the raw scan output as the evidence artifact.
+    let fileRef = null;
+    try {
+      const stamp = Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 8);
+      if (im._file && im._file.size > 0) {
+        const safe = (im._file.name.replace(/[^\w.\-]+/g, '_').replace(/^_+|_+$/g, '') || 'nmap').slice(-80);
+        const path = 'imports/' + stamp + '-' + safe;
+        const up = await sb.storage.from(STORAGE_BUCKET).upload(path, im._file, { upsert: false, contentType: im._file.type || 'text/plain' });
+        if (!up.error) fileRef = (up.data && up.data.path) || path;
+      } else if (im.text) {
+        const path = 'imports/' + stamp + '-pasted-nmap.txt';
+        const up = await sb.storage.from(STORAGE_BUCKET).upload(path, new Blob([im.text], { type: 'text/plain' }), { upsert: false, contentType: 'text/plain' });
+        if (!up.error) fileRef = (up.data && up.data.path) || path;
+      }
+    } catch (e) { /* storage is optional; the evidence row still records the import */ }
+
+    // 2) One Evidence item for the scan.
+    const targets = accepted.map(function (r) { return r.ip_address || r.hostname; }).filter(function (x, i, a) { return x && a.indexOf(x) === i; });
+    const ev = {
+      source: 'Nmap' + (im.meta && im.meta.nmap_version ? ' ' + im.meta.nmap_version : '') + (im.meta && im.meta.command ? ': ' + im.meta.command : ' service scan (-sV)'),
+      target_asset: targets.length <= 3 ? targets.join(', ') : targets.length + ' hosts in ' + ((engagementCidr() || {}).text || 'scope'),
+      observation: nmapSummary(im, accepted),
+      interpretation: null,
+      confidence: im.confidence || 'High',
+      file_ref: fileRef || (im.fileName ? im.fileName : null)
+    };
+    const when = nmapStartedAt(im.meta); if (when) ev.datetime = when;
+    const er = await settle(sb.from('evidence').insert(ev).select());
+    if (er.error) { im.committing = false; im.error = writeError(er.error); repaintNmap(); return; }
+    const evidenceId = er.data[0].evidence_id;
+
+    // 3) One Scan & Enumeration row per accepted host/port, citing it.
+    const rows = accepted.map(function (r) {
+      return {
+        evidence_id: evidenceId, hostname: r.hostname || null, ip_address: r.ip_address || null,
+        port: r.port, protocol: r.port ? (r.protocol || null) : null, state: r.port ? (r.state || null) : null,
+        service: r.service || null, version: r.version || null, os_observation: r.os_observation || null,
+        risk_note: null, needs_investigation: false
+      };
+    });
+    const ar = await settle(sb.from('assets').insert(rows).select());
+    if (ar.error) {
+      im.committing = false;
+      im.error = 'The scan was saved as ' + evidenceId + ', but the rows were not: ' + writeError(ar.error) + ' You can retry the import or add rows by hand citing ' + evidenceId + '.';
+      repaintNmap(); return;
+    }
+    state.nmap = null;
+    state.scanNotice = 'Imported ' + plural(rows.length, 'row') + ' from Nmap, citing ' + evidenceId + '. Add an analyst risk note to the services that deserve a closer look, and flag them.';
+    await loadAll();
+    paint();
+  }
+
+  function nmapPick(im) {
+    return h('div', { class: 'stack panel-body' },
+      h('p', { class: 'list-note' }, 'Upload the output of a scan you already ran against an authorized target, for example ',
+        h('code', null, 'nmap -sV -oX scan.xml 192.168.56.10'), '. XML (-oX) gives the most detail; the normal text output (-oN, or copied from the terminal) also works. Nothing is scanned from this app.'),
+      h('div', { class: 'field-pair' },
+        field('Nmap output file', h('input', {
+          id: 'nmap-file', type: 'file', accept: '.xml,.nmap,.txt,.log,text/xml,text/plain',
+          onchange: function (e) { const f = e.target.files && e.target.files[0]; im._file = f || null; im.fileName = f ? f.name : ''; const ta = $('nmap-text'); if (ta) ta.disabled = !!f; }
+        }), 'Or paste the output below instead.'),
+        h('div')),
+      field('…or paste the Nmap output', h('textarea', {
+        id: 'nmap-text', class: 'mono', rows: 9, wrap: 'off', spellcheck: 'false', disabled: !!im._file,
+        placeholder: 'Starting Nmap 7.94 ( https://nmap.org ) …\nNmap scan report for 192.168.56.10\nPORT   STATE SERVICE VERSION\n22/tcp open  ssh     OpenSSH …'
+      }, im.text || ''), 'Leave the file empty to use this instead.'),
+      im.error ? h('p', { class: 'form-error', role: 'alert' }, im.error) : null,
+      h('div', { class: 'form-actions' },
+        h('button', { class: 'btn small', type: 'button', onclick: function () { state.nmap = null; paintMain(); } }, 'Cancel'),
+        h('button', { class: 'btn small primary', type: 'button', disabled: im.busy, onclick: runNmapParse }, im.busy ? 'Reading…' : 'Read scan')));
+  }
+
+  function nmapPreview(im) {
+    const cidr = engagementCidr();
+    const recs = im.records;
+    const accepted = recs.filter(function (r) { return r.accepted; });
+    const outOfScope = recs.filter(function (r) { return !r._scoped; }).length;
+    const dupes = recs.filter(function (r) { return r._dupe; }).length;
+    const m = im.meta || {};
+    const setAll = function (on) { recs.forEach(function (r) { r.accepted = on && r._scoped; }); repaintNmap(); };
+    return h('div', { class: 'stack panel-body' },
+      h('p', { class: 'list-note' },
+        'Read ', h('strong', null, plural(recs.length, 'row')),
+        m.nmap_version ? ' from Nmap ' + m.nmap_version : '',
+        m.command ? h('span', null, ' · ', h('code', null, m.command)) : '',
+        m.hosts_up != null ? ' · ' + plural(m.hosts_up, 'host') + ' up' : '',
+        '. Open ports in scope are ticked; closed or filtered ports, duplicates and anything outside ',
+        h('strong', null, cidr ? cidr.text : 'the scope'), ' are not.'),
+      outOfScope ? h('div', { class: 'notice is-error', role: 'alert' }, h('p', null, h('strong', null, plural(outOfScope, 'row') + ' outside the authorized scope (' + (cidr ? cidr.text : 'unknown') + ').'), ' These can’t be imported. If this was not expected, stop and check the target with your instructor.')) : null,
+      im.parseErrors.length ? h('div', { class: 'notice is-error' }, h('p', null, h('strong', null, plural(im.parseErrors.length, 'line') + ' could not be read:')),
+        h('ul', { class: 'err-list' }, im.parseErrors.map(function (e) { return h('li', null, e); }))) : null,
+      recs.length ? h('div', { class: 'table-wrap' }, h('table', { class: 'preview-table' },
+        h('thead', null, h('tr', null,
+          h('th', { class: 'is-tight' }, h('label', { class: 'check' }, h('input', { type: 'checkbox', checked: accepted.length && accepted.length === recs.filter(function (r) { return r._scoped; }).length, onchange: function (e) { setAll(e.target.checked); } }), h('span', null, 'All'))),
+          ['Host', 'Port', 'State', 'Service', 'Version', 'OS observation', 'Note'].map(function (t) { return h('th', null, t); }))),
+        h('tbody', null, recs.map(function (r, i) {
+          const note = !r._scoped ? tag('Out of scope', 't-crit') : r._dupe ? tag('Already recorded', 't-open') : r._hostOnly ? tag('Host only', 't-info') : null;
+          return h('tr', { class: r.accepted ? '' : 'is-rejected' },
+            h('td', { class: 'is-tight' }, h('input', {
+              type: 'checkbox', checked: !!r.accepted, disabled: !r._scoped, 'aria-label': 'Import row ' + (i + 1),
+              onchange: function (e) { r.accepted = e.target.checked; repaintNmap(); }
+            })),
+            h('td', { class: 'mono' }, r.ip_address || '—', r.hostname ? h('span', { class: 'finding-id' }, r.hostname) : null),
+            h('td', { class: 'mono is-tight' }, r.port ? r.port + '/' + (r.protocol || '') : '—'),
+            h('td', { class: 'is-tight' }, r.state ? stateTag(r) : '—'),
+            h('td', { class: 'is-tight' }, r.service || '—'),
+            h('td', null, r.version || h('span', { class: 'nil' }, '—')),
+            h('td', null, r.os_observation || h('span', { class: 'nil' }, '—')),
+            h('td', { class: 'is-tight' }, note || ''));
+        })))) : h('p', { class: 'nil' }, 'No hosts or ports were found in this output.'),
+      dupes ? h('p', { class: 'hint' }, plural(dupes, 'row') + ' already in the Scan & Enumeration table ' + (dupes === 1 ? 'is' : 'are') + ' unticked so nothing is recorded twice. Tick ' + (dupes === 1 ? 'it' : 'them') + ' to import anyway.') : null,
+      h('div', { class: 'form-grid' },
+        field('Confidence', selectInput('nmap-confidence', 'confidence', CONFIDENCE, im.confidence || 'High')),
+        h('div'), h('div')),
+      h('label', { class: 'check', for: 'nmap-sanitized' },
+        h('input', { id: 'nmap-sanitized', type: 'checkbox', checked: !!im.sanitized, onchange: function (e) { im.sanitized = e.target.checked; } }),
+        h('span', null, 'This scan was run against an authorized target, and the output contains no credentials, hashes or keys.')),
+      im.error ? h('p', { class: 'form-error', role: 'alert' }, im.error) : null,
+      h('div', { class: 'form-actions' },
+        h('button', { class: 'btn small', type: 'button', disabled: im.committing, onclick: function () { im.phase = 'pick'; im.records = []; im.error = ''; repaintNmap(); } }, 'Back'),
+        h('button', { class: 'btn small', type: 'button', disabled: im.committing, onclick: function () { state.nmap = null; paintMain(); } }, 'Cancel'),
+        h('button', { class: 'btn small primary', type: 'button', disabled: im.committing || !accepted.length, onclick: commitNmap },
+          im.committing ? 'Saving…' : 'Save ' + plural(accepted.length, 'row') + ' + evidence')));
+  }
+
+  function nmapPanel() {
+    const im = state.nmap;
+    return h('section', { class: 'panel is-editing', id: 'nmap-panel' },
+      h('header', null, h('h2', null, 'Import Nmap results'),
+        h('span', { class: 'meta' }, im.phase === 'preview' ? 'Step 2 of 2 · review and save' : 'Step 1 of 2 · choose the output')),
+      im.phase === 'preview' ? nmapPreview(im) : nmapPick(im));
   }
 
   function scanPage(p) {
     const rows = rowsOf('assets');
     const stale = rows.length && !('port' in rows[0]);
+    const noOs = rows.length && !('os_observation' in rows[0]);
     return h('div', { class: 'page' },
       pageHead(p, ' · linked to evidence by evidence_id'),
       stale ? h('div', { class: 'notice is-error', role: 'alert' },
         h('p', null, 'The assets table is on an earlier version of the schema. Run the latest schema.sql in the Supabase SQL editor, then press Refresh.')) : null,
+      noOs && !stale ? h('div', { class: 'notice' },
+        h('p', null, 'The assets table has no os_observation column yet, so OS observations won’t be saved. Run the latest schema.sql, then press Refresh.')) : null,
+      state.scanNotice ? h('div', { class: 'notice', role: 'status' }, h('p', null, state.scanNotice),
+        h('button', { class: 'btn small', type: 'button', onclick: function () { state.scanNotice = ''; paintMain(); } }, 'Dismiss')) : null,
+      state.nmap ? nmapPanel() : null,
       state.editing === 'scan:paste' ? scanPasteForm() : state.editing === 'scan:new' ? scanForm() : null,
       scanList(p),
       aiSummaryPanel('Scan', 'AI Interpretation'));
@@ -2766,6 +3474,7 @@ th.sortable.is-sorted .sort-caret { color: var(--accent); }
   }
   function guessFormat(text, name) {
     const head = text.slice(0, 2000); const fn = (name || '').toLowerCase();
+    if (/<nmaprun\b|^#?\s*Nmap [\d.]+\S* scan initiated|^Starting Nmap [\d.]|^Nmap scan report for /m.test(head)) return 'nmap';
     if (/<NessusClientData|<ReportHost\b/.test(head) || fn.endsWith('.nessus')) return 'nessus';
     if (/<OWASPZAPReport|<alertitem\b/.test(head)) return 'zap';
     if (/<result\b[\s\S]*<nvt\b|<report[\s>][\s\S]*<results\b/i.test(head)) return 'openvas';
@@ -2806,6 +3515,7 @@ th.sortable.is-sorted .sort-caret { color: var(--accent); }
     let format = imp.format;
     if (format === 'auto') format = guessFormat(text, imp.fileName);
     if (format === 'unknown') { imp.error = 'Could not tell what kind of report this is. Pick the format and try again.'; repaintImport(); return; }
+    if (format === 'nmap') { imp.error = 'This is Nmap output (hosts, ports and services), not a vulnerability report. Import it with “Import Nmap results” on the Scan & Enumeration page.'; repaintImport(); return; }
     if (format === 'csv' && (!imp.columnMap.title)) { imp.headers = readCsvHeaders(text); autoMap(imp); imp.phase = 'mapping'; if (!imp.columnMap.title) { imp.error = 'Map the Finding title column before importing.'; repaintImport(); return; } }
     imp.busy = true; repaintImport();
 
@@ -4061,6 +4771,8 @@ th.sortable.is-sorted .sort-caret { color: var(--accent); }
         : tablePage(p);
     const main = $('main');
     main.replaceChildren(view);
+    // Visual only: animate the page in when the section changes, not on every repaint.
+    if (main.dataset.shown !== state.page) { main.dataset.shown = state.page; if (view && view.classList) view.classList.add('page-enter'); }
     if (state.focus && state.page === 'evidence') {
       const rows = main.querySelectorAll('tr[data-ev]');
       for (let i = 0; i < rows.length; i++) {
@@ -4183,4 +4895,19 @@ th.sortable.is-sorted .sort-caret { color: var(--accent); }
   const boot = PRESET.url && PRESET.anonKey ? PRESET : readSaved();
   if (boot && boot.url && boot.anonKey && !keyProblem(boot.anonKey)) connect(normalizeUrl(boot.url), boot.anonKey, false);
 })();
+</script>
+<script>
+  // Visual only: spin the AHC mark briefly when the logo is clicked.
+  (function () {
+    const brand = document.querySelector('.brand');
+    if (!brand) return;
+    brand.addEventListener('click', function () {
+      brand.classList.remove('is-spinning');
+      void brand.offsetWidth;   // restart the animation on repeat clicks
+      brand.classList.add('is-spinning');
+    });
+    brand.addEventListener('animationend', function (e) {
+      if (e.target.classList && e.target.classList.contains('brand-orbit')) brand.classList.remove('is-spinning');
+    });
+  })();
 </script>

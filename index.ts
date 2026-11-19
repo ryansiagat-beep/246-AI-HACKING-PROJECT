@@ -14,6 +14,9 @@
 //     - csv      generic CSV (you map the columns in the app)
 //     - nikto    Nikto output: -Format csv, -Format json, or plain text
 //     - zap      OWASP ZAP report: XML or JSON
+//     - nmap     Nmap XML (-oX) or normal text output (-oN / terminal).
+//                Only with "target": "assets" (Scan & Enumeration); it
+//                returns host/port records instead of findings.
 //
 // Why a function (and not the browser)
 //   The assignment asks for report parsing to happen in a backend function.
@@ -547,11 +550,213 @@ function parseCsv(src: string, map: Record<string, string>, errors: ParseError[]
 }
 
 // ---------------------------------------------------------------------
+// Nmap (XML from -oX, or the normal text output from -oN / the terminal)
+// Returns one record per host and port, for the Scan & Enumeration page.
+// Nmap host/port output is enumeration data, not vulnerability findings,
+// so these records use their own shape (NmapRecord) and are only
+// returned when the caller asks for target "assets".
+// ---------------------------------------------------------------------
+type NmapRecord = {
+  record_index: number;
+  ip_address: string | null;
+  hostname: string | null;
+  port: number | null;
+  protocol: string | null;
+  state: string | null;      // open, closed, filtered, unfiltered, open|filtered, closed|filtered
+  service: string | null;    // e.g. ssh, http, ssl/http
+  version: string | null;    // product + version + extra info, e.g. "Apache httpd 2.4.29 (Ubuntu)"
+  os_observation: string | null;
+  reason: string | null;     // e.g. syn-ack
+  cpe: string[];
+  host_up: boolean;
+};
+type NmapMeta = {
+  nmap_version: string | null;
+  command: string | null;
+  started: string | null;
+  hosts_up: number | null;
+  hosts_total: number | null;
+  summary: string | null;
+};
+const NMAP_STATES = ["open", "closed", "filtered", "unfiltered", "open|filtered", "closed|filtered"];
+
+function blankNmap(i: number): NmapRecord {
+  return {
+    record_index: i, ip_address: null, hostname: null, port: null, protocol: null, state: null,
+    service: null, version: null, os_observation: null, reason: null, cpe: [], host_up: true,
+  };
+}
+function nmapState(s: string | null | undefined): string | null {
+  const t = String(s || "").trim().toLowerCase();
+  return NMAP_STATES.indexOf(t) === -1 ? null : t;
+}
+function joinVersion(parts: (string | null | undefined)[]): string | null {
+  const t = parts.map((p) => (p || "").trim()).filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+  return t || null;
+}
+
+function parseNmapXml(src: string, errors: ParseError[], meta: NmapMeta): NmapRecord[] {
+  const root = parseXml(src);
+  const run = findAll(root, "nmaprun")[0];
+  if (!run) throw new Error("This does not look like Nmap XML: no <nmaprun> element was found. Save the scan with -oX.");
+  meta.nmap_version = run.attrs["version"] || null;
+  meta.command = run.attrs["args"] || null;
+  meta.started = run.attrs["startstr"] || null;
+  const fin = findAll(run, "finished")[0];
+  if (fin) meta.summary = fin.attrs["summary"] || null;
+  const hostsTag = findAll(run, "hosts")[0];
+  if (hostsTag) {
+    meta.hosts_up = hostsTag.attrs["up"] != null ? parseInt(hostsTag.attrs["up"], 10) : null;
+    meta.hosts_total = hostsTag.attrs["total"] != null ? parseInt(hostsTag.attrs["total"], 10) : null;
+  }
+
+  const out: NmapRecord[] = [];
+  let idx = 0;
+  const hosts = run.children.filter((c) => c.tag === "host");
+  hosts.forEach((host, hi) => {
+    try {
+      const status = kid(host, "status");
+      const up = !status || (status.attrs["state"] || "up") === "up";
+      const addrs = host.children.filter((c) => c.tag === "address");
+      const ip = (addrs.find((a) => a.attrs["addrtype"] === "ipv4") || addrs.find((a) => a.attrs["addrtype"] === "ipv6"))?.attrs["addr"] || null;
+      const hnNodes = findAll(host, "hostname");
+      const hostname = (hnNodes.find((n) => n.attrs["type"] === "user") || hnNodes[0])?.attrs["name"] || null;
+      // OS: best osmatch from -O, else the ostype nmap guessed from a service banner.
+      const osm = findAll(host, "osmatch").sort((a, b) => (parseInt(b.attrs["accuracy"] || "0", 10) - parseInt(a.attrs["accuracy"] || "0", 10)))[0];
+      const svcOsList = findAll(host, "service").map((s) => s.attrs["ostype"]).filter((x, i, a) => x && a.indexOf(x) === i);
+      const svcOs = svcOsList.length ? svcOsList.join(", ") : null;
+      const os = osm ? osm.attrs["name"] + (osm.attrs["accuracy"] ? " (" + osm.attrs["accuracy"] + "% match)" : "") : (svcOs ? svcOs + " (from service banner)" : null);
+
+      const ports = findAll(host, "port");
+      if (!ports.length) {
+        const r = blankNmap(idx++);
+        r.ip_address = ip; r.hostname = hostname; r.os_observation = os; r.host_up = up;
+        if (!ip && !hostname) { errors.push({ record_index: hi, line: null, message: "Nmap host " + (hi + 1) + ": no address or hostname, skipped." }); idx--; return; }
+        out.push(r);
+        return;
+      }
+      for (const p of ports) {
+        const r = blankNmap(idx++);
+        r.ip_address = ip; r.hostname = hostname; r.os_observation = os; r.host_up = up;
+        r.port = portNum(p.attrs["portid"]);
+        r.protocol = (p.attrs["protocol"] || "").toLowerCase() || null;
+        const st = kid(p, "state");
+        r.state = nmapState(st?.attrs["state"]);
+        r.reason = st?.attrs["reason"] || null;
+        const svc = kid(p, "service");
+        if (svc) {
+          const tunnel = svc.attrs["tunnel"] ? svc.attrs["tunnel"] + "/" : "";
+          r.service = svc.attrs["name"] ? tunnel + svc.attrs["name"] : null;
+          r.version = joinVersion([svc.attrs["product"], svc.attrs["version"], svc.attrs["extrainfo"] ? "(" + svc.attrs["extrainfo"] + ")" : null]);
+          r.cpe = svc.children.filter((c) => c.tag === "cpe").map((c) => c.text.trim()).filter(Boolean);
+        }
+        if (r.port == null) { errors.push({ record_index: r.record_index, line: null, message: "Nmap host " + (ip || hostname) + ": a <port> had no valid portid, skipped." }); continue; }
+        out.push(r);
+      }
+    } catch (e) {
+      errors.push({ record_index: hi, line: null, message: "Nmap host " + (hi + 1) + ": " + String((e as Error).message || e) });
+    }
+  });
+  if (!out.length && !errors.length) throw new Error("The Nmap XML parsed, but no hosts were reported. Check that the scan found live hosts.");
+  return out;
+}
+
+function parseNmapText(src: string, errors: ParseError[], meta: NmapMeta): NmapRecord[] {
+  const lines = src.replace(/\r\n/g, "\n").split("\n");
+  const out: NmapRecord[] = [];
+  let idx = 0;
+  let curIp: string | null = null, curName: string | null = null;
+  let hostRecords: NmapRecord[] = [];
+  let hostOs: string | null = null;
+  let sawHost = false;
+  let inPortTable = false;
+
+  const closeHost = () => {
+    if (!sawHost) return;
+    if (!hostRecords.length) {
+      const r = blankNmap(idx++);
+      r.ip_address = curIp; r.hostname = curName;
+      hostRecords.push(r);
+    }
+    hostRecords.forEach((r) => { if (hostOs && !r.os_observation) r.os_observation = hostOs; });
+    out.push(...hostRecords);
+    hostRecords = []; hostOs = null; sawHost = false; inPortTable = false;
+  };
+
+  lines.forEach((raw, n) => {
+    const line = raw.replace(/\s+$/, "");
+    let m: RegExpExecArray | null;
+    if ((m = /^#?\s*Nmap ([\d.]+\S*) scan initiated (.+?) as:\s*(.+)$/.exec(line))) {
+      meta.nmap_version = m[1]; meta.started = m[2]; meta.command = m[3]; return;
+    }
+    if ((m = /^Starting Nmap ([\d.]+\S*)[^)]*\)\s*at\s+(.+)$/.exec(line))) {
+      meta.nmap_version = meta.nmap_version || m[1]; meta.started = meta.started || m[2]; return;
+    }
+    if ((m = /^#?\s*Nmap done(?: at [^;]+;)?:?\s*(\d+) IP address(?:es)? \((\d+) hosts? up\)(.*)$/.exec(line))) {
+      meta.hosts_total = parseInt(m[1], 10); meta.hosts_up = parseInt(m[2], 10);
+      meta.summary = line.replace(/^#\s*/, "");
+      return;
+    }
+    if ((m = /^Nmap scan report for (.+)$/.exec(line))) {
+      closeHost();
+      sawHost = true;
+      const target = m[1].trim();
+      const pm = /^(\S+)\s+\(([^)]+)\)$/.exec(target);
+      if (pm) { curName = pm[1]; curIp = pm[2]; }
+      else if (/^[\d.]+$|^[0-9a-f:]+$/i.test(target)) { curIp = target; curName = null; }
+      else { curName = target; curIp = null; }
+      return;
+    }
+    if (!sawHost) return;
+    if (/^PORT\s+STATE\s+SERVICE/.test(line)) { inPortTable = true; return; }
+    if ((m = /^(\d+)\/(tcp|udp|sctp)\s+(\S+)\s+(\S+)(?:\s+(.*))?$/.exec(line))) {
+      const r = blankNmap(idx++);
+      r.ip_address = curIp; r.hostname = curName;
+      r.port = portNum(m[1]);
+      r.protocol = m[2].toLowerCase();
+      r.state = nmapState(m[3]);
+      r.service = m[4] || null;
+      r.version = joinVersion([m[5] || null]);
+      if (r.port == null || !r.state) {
+        errors.push({ record_index: r.record_index, line: n + 1, message: "Line " + (n + 1) + ": could not read the port or state in \"" + line.trim() + "\"." });
+        idx--; return;
+      }
+      hostRecords.push(r);
+      return;
+    }
+    if ((m = /^(?:OS details|Running(?: \(JUST GUESSING\))?|Aggressive OS guesses):\s*(.+)$/.exec(line))) {
+      if (!hostOs || /^OS details/.test(line)) hostOs = m[1].split(/,\s*(?=[A-Z])/)[0].trim();
+      return;
+    }
+    if ((m = /^Service Info:.*?\bOS(?:s)?:\s*([^;]+)/.exec(line))) {
+      if (!hostOs) hostOs = m[1].trim() + " (from service banner)";
+      return;
+    }
+    if (inPortTable && line.trim() === "") inPortTable = false;
+  });
+  closeHost();
+  if (!out.length && !errors.length) {
+    throw new Error("No Nmap hosts were recognized. Upload the XML (-oX) file, or paste the normal output that includes the \"Nmap scan report for\" lines and the PORT table.");
+  }
+  return out;
+}
+
+function parseNmap(src: string, errors: ParseError[], meta: NmapMeta): NmapRecord[] {
+  return /<nmaprun\b/.test(src.slice(0, 5000)) ? parseNmapXml(src, errors, meta) : parseNmapText(src, errors, meta);
+}
+function isNmap(text: string): boolean {
+  const head = text.slice(0, 5000);
+  return /<nmaprun\b|<!DOCTYPE nmaprun/.test(head) ||
+    /^#?\s*Nmap [\d.]+\S* scan initiated|^Starting Nmap [\d.]|^Nmap scan report for /m.test(head);
+}
+
+// ---------------------------------------------------------------------
 // Format detection
 // ---------------------------------------------------------------------
 function detect(text: string, filename: string): string {
   const head = text.slice(0, 4000);
   const fn = (filename || "").toLowerCase();
+  if (isNmap(text)) return "nmap";
   if (/<NessusClientData|<ReportHost\b/.test(head) || fn.endsWith(".nessus")) return "nessus";
   if (/<OWASPZAPReport|<alertitem\b/.test(head)) return "zap";
   if (/<report[\s>][\s\S]*<results\b|<result\b[\s\S]*<nvt\b|GMP|openvas|greenbone/i.test(head)) return "openvas";
@@ -585,6 +790,24 @@ const handler = async (req: Request): Promise<Response> => {
   const filename = String(payload?.filename || "");
   let format = String(payload?.format || "auto").toLowerCase();
   if (format === "auto") format = detect(text, filename);
+  // "assets" = Scan & Enumeration import (host/port rows). Default is the
+  // vulnerability import, which keeps its original behavior.
+  const target = String(payload?.target || "vulnerabilities").toLowerCase();
+
+  if (target === "assets") {
+    if (format !== "nmap") {
+      return json({ error: "Only Nmap output can be imported on Scan & Enumeration. Upload the -oX XML file or paste the normal Nmap output. Vulnerability reports (Nessus, OpenVAS, ZAP, Nikto, CSV) go on the Vulnerabilities page.", detected_format: format }, 422);
+    }
+    const nErrors: ParseError[] = [];
+    const meta: NmapMeta = { nmap_version: null, command: null, started: null, hosts_up: null, hosts_total: null, summary: null };
+    let assets: NmapRecord[] = [];
+    try { assets = parseNmap(text, nErrors, meta); }
+    catch (e) { return json({ error: String((e as Error).message || e), detected_format: "nmap" }, 422); }
+    return json({ detected_format: "nmap", kind: "assets", record_count: assets.length, records: assets, errors: nErrors, meta });
+  }
+  if (format === "nmap") {
+    return json({ error: "This is Nmap output (hosts, ports and services), not a vulnerability report. Import it on the Scan & Enumeration page.", detected_format: "nmap" }, 422);
+  }
 
   const errors: ParseError[] = [];
   let records: Finding[] = [];
@@ -609,11 +832,11 @@ const handler = async (req: Request): Promise<Response> => {
 };
 
 // Supabase runs this file as the entry point, so the server starts there.
-// When imported by a test it does not, so no port is bound.
-if (import.meta.main) Deno.serve(handler);
+// When imported by a test (import.meta.main === false), no port is bound.
+if (import.meta.main !== false) Deno.serve(handler);
 export { handler };
 
 // Exported for local testing (ignored by Deno.serve at runtime).
 export const __test = {
-  parseNessus, parseOpenvas, parseZapXml, parseZapJson, parseNikto, parseCsv, detect, parseXml, splitCsvLine,
+  parseNessus, parseOpenvas, parseZapXml, parseZapJson, parseNikto, parseCsv, parseNmap, detect, parseXml, splitCsvLine,
 };

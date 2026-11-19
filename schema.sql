@@ -215,6 +215,8 @@ alter table public.assets add column if not exists service text;
 alter table public.assets add column if not exists version text;
 alter table public.assets add column if not exists risk_note text;
 alter table public.assets add column if not exists needs_investigation boolean not null default false;
+-- Lab 3: OS observation for the host (from Nmap -O or a service banner).
+alter table public.assets add column if not exists os_observation text;
 
 do $$
 begin
