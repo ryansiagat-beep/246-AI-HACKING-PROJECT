@@ -37,7 +37,7 @@
 - AI Security Analyst: preset and free-form questions; answers show cited Evidence ID chips; a verify-before-saving form (verdict, note, confidence, primary evidence). 10 verified answers saved.
 - Evidence Locker: EV-004 to EV-019 with source, target, observation, interpretation, confidence and file.
 - Reports: executive summary and technical report views, editable sections, export to PDF.
-- Dashboard visuals (read-only): risk posture, severity donut, most exposed host, an attack-path diagram that chains the top-ranked open findings (labeled as a risk scenario, not an attack performed), and a network map of the assessor and each host with ports colored by worst open finding.
+- Dashboard visuals (read-only): risk posture, severity ring, most exposed host, an attack-path diagram that chains the top-ranked open findings (labeled as a risk scenario, not an attack performed), and a network map of the assessor and each host with ports colored by worst open finding.
 - Attack Evidence, MITRE ATT&CK coverage: a 14-tactic matrix that lights up the tactics and techniques recorded on the attack events (Discovery: T1018, T1046).
 - Evidence chain: from any Evidence ID, a view of every recon item, scan row, finding, AI analysis and report that cites it.
 - Presenter mode and search: full-screen presenter mode with arrow-key navigation through the sections, a 12-minute talk timer and the speaker for each section; Ctrl+K search across sections, findings (VULN-) and evidence (EV-).
