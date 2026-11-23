@@ -2,6 +2,8 @@
 
 An AI-assisted dashboard for ethical hacking assessments, built for NWIT 246 (Attackers' Tools and Techniques, Fall 2026) at Montgomery College. The client, CyberDome Corporation, is fictional. It stores and presents the evidence from an authorized lab assessment (scope: `192.168.56.0/24`) and helps an analyst see what was found, why it matters, what to investigate next and what to fix. Every finding links to an Evidence ID.
 
+**Authorized lab use only.** The platform only documents evidence. It never scans or attacks anything. Only assess instructor-approved targets.
+
 **Team:** Black Ice Security. Members: Ryan Siagat (Recon Lead) · Olma (Network Assessment Lead) · Elnathan (Vulnerability Lead) · Darien (AI/Reporting Lead) · Jacob (Demo Lead)
 
 ## What's in here
