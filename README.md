@@ -2,8 +2,6 @@
 
 An AI-assisted dashboard for ethical hacking assessments, built for NWIT 246 (Attackers' Tools and Techniques, Fall 2026) at Montgomery College. The client, CyberDome Corporation, is fictional. It stores and presents the evidence from an authorized lab assessment (scope: `192.168.56.0/24`) and helps an analyst see what was found, why it matters, what to investigate next and what to fix. Every finding links to an Evidence ID.
 
-> **Authorized lab use only.** The platform only documents evidence. It never scans or attacks anything. Only assess instructor-approved targets.
-
 **Team:** Black Ice Security. Members: Ryan Siagat (Recon Lead) · Olma (Network Assessment Lead) · Elnathan (Vulnerability Lead) · Darien (AI/Reporting Lead) · Jacob (Demo Lead)
 
 ## What's in here
@@ -57,8 +55,6 @@ Tip: serving the folder (`python -m http.server 8000`, then http://localhost:800
 3. Review the rows. Open ports in scope are ticked; closed/filtered ports, rows already in the table and anything outside the engagement CIDR are not (out-of-scope rows can't be imported).
 4. Confirm the output is sanitized and press **Save**. The raw file goes to the `evidence-files` bucket, one Evidence item summarizes the scan, and each ticked host/port becomes a row citing it, including the OS observation.
 5. Add an analyst risk note to the services worth investigating (**Add note**) and flag them.
-
-The app still never scans anything: it only reads output you already produced.
 
 
 ## Security
