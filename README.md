@@ -29,7 +29,7 @@ Executive Dashboard · Engagement · Recon · Scan & Enumeration · Vulnerabilit
 - **Evidence chain:** click the "N records" count in the Evidence Locker's *Cited by* column (or pick an EV-ID in search) to see every recon item, scan row, finding, AI analysis and report that cites that evidence.
 - **Attack path:** dashboard diagram that chains the top-ranked open findings into a risk scenario (not an attack the team performed).
 - **Network map:** dashboard diagram of the assessor and each in-scope host, with every open port colored by its worst open finding.
-- **Animated numbers:** dashboard counts and the severity donut animate in (turned off automatically if the computer is set to reduce motion).
+- **Animated numbers:** dashboard counts and the severity ring animate in (turned off automatically if the computer is set to reduce motion).
 - **Boot sequence:** a short "access granted" intro the first time the app opens in a browser session (click or press any key to skip).
 - **Live ticker:** the footer scrolls the open findings and latest evidence; click an item to open it. Hover to pause.
 - **Testing-window countdown:** live countdown on the dashboard to the end of the authorized testing window.
