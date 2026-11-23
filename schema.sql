@@ -604,14 +604,17 @@ create trigger iocs_set_updated_at
 
 -- ---------------------------------------------------------------------
 -- Access rules (row-level security)
---   Read:  anyone holding the project's anon key, so the app can display
---          records without a login screen.
---   Write: signed-in users only. Create an account for each teammate in
---          the project's Authentication settings, and turn off public
---          sign-ups there so nobody else can create one.
--- The anon key is public by design, so treat these tables as readable by
--- anyone who has your project URL. To lock reading down too, change
--- "to anon, authenticated" below to "to authenticated".
+--   Read:  signed-in teammates only. The anon key is public by design, so
+--          reading is locked to logged-in users; anyone opening the app
+--          without signing in sees empty tables. Give the instructor (or
+--          any demo viewer) a team login.
+--   Write: signed-in teammates only, with separate insert / update /
+--          delete rules. Create an account for each teammate in the
+--          project's Authentication settings, and turn off public sign-ups
+--          there so nobody else can create one.
+-- Matches the live project (migration
+-- 20261117211950_separate_team_write_policies_and_index_staging_evidence
+-- plus the read rule restricted to authenticated users).
 -- ---------------------------------------------------------------------
 do $$
 declare
@@ -627,17 +630,27 @@ begin
 
     execute format('drop policy if exists "Read for the app" on public.%I', t);
     execute format(
-      'create policy "Read for the app" on public.%I for select to anon, authenticated using (true)', t);
+      'create policy "Read for the app" on public.%I for select to authenticated using (true)', t);
 
+    -- Replaced by the three separate rules below.
     execute format('drop policy if exists "Write for signed-in users" on public.%I', t);
-    execute format(
-      'create policy "Write for signed-in users" on public.%I for all to authenticated using (true) with check (true)', t);
 
-    execute format('grant select on public.%I to anon, authenticated', t);
-    execute format('grant insert, update, delete on public.%I to authenticated', t);
+    execute format('drop policy if exists "Team insert" on public.%I', t);
+    execute format(
+      'create policy "Team insert" on public.%I for insert to authenticated with check (true)', t);
+    execute format('drop policy if exists "Team update" on public.%I', t);
+    execute format(
+      'create policy "Team update" on public.%I for update to authenticated using (true) with check (true)', t);
+    execute format('drop policy if exists "Team delete" on public.%I', t);
+    execute format(
+      'create policy "Team delete" on public.%I for delete to authenticated using (true)', t);
+
+    execute format('grant select, insert, update, delete on public.%I to authenticated', t);
   end loop;
 end
 $$;
+
+create index if not exists vuln_import_staging_evidence_id_idx on public.vuln_import_staging (evidence_id);
 
 grant usage, select on sequence public.evidence_seq, public.vuln_seq to authenticated;
 
@@ -719,7 +732,7 @@ select v.member_name, v.role, v.sort_order
 from (values
   ('Ryan',   'Recon Lead',              1),
   ('Olma',   'Network Assessment Lead', 2),
-  ('Nathan', 'Vulnerability Lead',      3),
+  ('Elnathan', 'Vulnerability Lead',    3),
   ('Darien', 'AI/Reporting Lead',       4),
   ('Jacob',  'Demo Lead',               5)
 ) as v (member_name, role, sort_order)

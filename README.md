@@ -11,6 +11,7 @@ An AI-assisted dashboard for ethical hacking assessments, built for NWIT 246 (At
 | File | What it is |
 |---|---|
 | `index.html` | The whole web app in one self-contained page (HTML/CSS/JavaScript). Open it in a browser. |
+| `supabase.js` | The Supabase client library (supabase-js v2). Keep it in the **same folder** as `index.html`; if it's missing, the app loads the same library from the jsDelivr CDN instead. |
 | `schema.sql` | The Supabase (Postgres) schema with Row-Level Security. Run it once in the Supabase SQL Editor. |
 | `PRD.md` | Product Requirements Document (final, updated to match what was built). |
 | `supabase/functions/parse-scan/index.ts` | Edge Function: parses Nessus / OpenVAS / Nikto / ZAP / CSV reports, and Nmap output for Scan & Enumeration. |
@@ -44,13 +45,26 @@ None of these features change any data.
 3. **Set secrets** in Supabase → Edge Functions → Secrets (never in the browser or this repo):
    - `GROQ_API_KEY`: free key from console.groq.com, for the AI analyst (or `GEMINI_API_KEY` / `ANTHROPIC_API_KEY`)
    - `NVD_API_KEY`: optional, for faster CVE lookups
-4. **Open `index.html`**, click **Connect Supabase**, and paste your Project URL and the anon key.
-5. **Create a team login** in Supabase → Authentication → Users, then **Sign in** to edit.
+4. **Open `index.html`** (keep `supabase.js` in the same folder, and don't open it from inside a zip), click **Connect Supabase**, and paste your Project URL and the anon key.
+5. **Create a team login** in Supabase → Authentication → Users, then **Sign in**. Every page is empty until you sign in (see Security).
+
+Tip: serving the folder (`python -m http.server 8000`, then http://localhost:8000) avoids `file:///` quirks such as losing the saved connection when the file moves.
+
+## Importing an Nmap scan (Lab 3)
+
+1. On Kali, scan an authorized target and save the XML: `nmap -sV -oX scan.xml 192.168.56.10` (the normal text output from `-oN` or the terminal also works).
+2. Open **Scan & Enumeration → Import Nmap results**, choose the file, and press **Read scan**.
+3. Review the rows. Open ports in scope are ticked; closed/filtered ports, rows already in the table and anything outside the engagement CIDR are not (out-of-scope rows can't be imported).
+4. Confirm the output is sanitized and press **Save**. The raw file goes to the `evidence-files` bucket, one Evidence item summarizes the scan, and each ticked host/port becomes a row citing it, including the OS observation.
+5. Add an analyst risk note to the services worth investigating (**Add note**) and flag them.
+
+The app still never scans anything: it only reads output you already produced.
+
 
 ## Security
 
 - This code contains no API keys or passwords. They are stored as Supabase secrets and read only on the server.
-- Row-Level Security: anyone with the anon key can read; only signed-in teammates can change data.
+- Row-Level Security: only signed-in teammates can read or change data. The anon key is public by design, so a visitor who is not signed in sees empty tables. Give the instructor (or any demo viewer) a team login.
 - The AI receives only project records, must cite Evidence IDs and must say "insufficient evidence" when data is missing; an analyst verifies every answer before it is saved.
 - Never commit real secrets, passwords or sensitive evidence to this repository.
 
